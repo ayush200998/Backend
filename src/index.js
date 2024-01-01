@@ -1,8 +1,20 @@
+/* eslint-disable import/extensions */
 import dotenv from 'dotenv';
-import connectDB from "./db/index.js";
+import connectDB from './db/index.js';
+import app from './app.js';
+
+const PORT = process.env.PORT || 8000;
 
 dotenv.config({
-    path: './.env',
+  path: './.env',
 });
 
-connectDB();
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log('Server is listening on port', PORT);
+    });
+  })
+  .catch((error) => {
+    console.log('MongoDb Connection Failed', error);
+  });
