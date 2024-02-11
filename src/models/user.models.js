@@ -31,6 +31,10 @@ const userSchema = new Schema(
       type: String, // Cloudinary url
       required: true,
     },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+    },
     coverImage: {
       type: String, // Cloudinary url
     },
@@ -40,10 +44,6 @@ const userSchema = new Schema(
         ref: 'Video',
       },
     ],
-    password: {
-      type: String,
-      required: [true, 'Password is required'],
-    },
     refreshToken: {
       type: String,
     },
@@ -79,7 +79,7 @@ userSchema.methods.generateAccessTokens = function () {
   );
 };
 
-userSchema.methods.generateAccessTokens = function () {
+userSchema.methods.generateRefreshTokens = function () {
   jwt.sign(
     {
       _id: this._id,

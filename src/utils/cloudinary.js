@@ -17,16 +17,17 @@ CloudinaryHelper.uploadOnCloudinary = async (localFilePath) => {
     if (!localFilePath) return null;
 
     // Upload file to cloudinary
-    const response = await cloudinary.v2.uploader
+    const response = await cloudinary.uploader
       .upload(localFilePath, {
         resource_type: 'auto',
       });
 
+    fs.unlinkSync(localFilePath);
     // Successfully uploaded
-    console.log('File uploaded sucessfully:', response.url);
     return response;
   } catch (error) {
-    fs.unlinkFile(localFilePath);
+    console.log('Error while uploading on cloudinary', error.message);
+    fs.unlinkSync(localFilePath);
     return null;
   }
 };
@@ -38,7 +39,6 @@ CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath) => {
     const uploadedResult = await new Promise((resolve) => {
       cloudinary.v2.uploader.upload_stream((error, uploadResult) => resolve(uploadResult)).end(byteArrayBuffer);
     });
-    console.log('Uploaded result', uploadedResult);
     return uploadedResult;
   } catch (error) {
     fs.unlinkFile(localFilePath);
