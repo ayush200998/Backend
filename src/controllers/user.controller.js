@@ -87,4 +87,101 @@ UserController.registerUser = asyncHandler(async (req, res) => {
   return res.status(201).json(new ApiResponse(200, createdUser, 'User registered successfully'));
 });
 
+UserController.loginUser = asyncHandler(async (req, res) => {
+  // Get the email or username
+  const {
+    username,
+    email,
+    password,
+  } = req.body;
+
+  if (!username || !email) {
+    throw new ApiErrors(400, 'Username OR Email is required');
+  }
+
+  // Find user object with email or username
+  const user = await User.findOne({
+    $or: [
+      {
+        email,
+      },
+      {
+        username,
+      },
+    ],
+  });
+
+  if (!user) {
+    throw new ApiErrors(404, 'No user found');
+  }
+
+  // Password check
+  const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+  if (!isPasswordCorrect) {
+    throw new ApiErrors(401, 'Incorrect password');
+  }
+
+  // Get the access and refresh tokens
+  const { accessToken, refreshToken } = await UserHelper.generateAccessAndRefreshTokens(user._id);
+
+  // Return user
+  const loggedInUser = await User.findById(user._id).select('-password -refreshToken');
+
+  // Generate cookie
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie('accessToken', accessToken, cookieOptions)
+    .cookie('refreshToken', refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        'User logged in successfully',
+      ),
+    );
+});
+
+UserController.logoutUser = asyncHandler(async (req, res) => {
+  const userId = req?.user._id;
+
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        refreshToken: '',
+      },
+    },
+    {
+      new: true,
+    },
+  );
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie('accessToken', cookieOptions)
+    .clearCookie('refreshToken', cookieOptions)
+    .json(
+      new ApiResponse(
+        200,
+        {},
+        'User logged out successfully',
+      ),
+    );
+});
+
 export default UserController;
