@@ -37,4 +37,13 @@ UserHelper.generateAccessAndRefreshTokens = async (userId = '') => {
   }
 };
 
+UserHelper.getCookieOptions = () => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return cookieOptions;
+};
+
 export default UserHelper;

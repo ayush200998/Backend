@@ -18,13 +18,13 @@ AuthMiddleware.verifyTokens = asyncHandler(async (req, _, next) => {
     const decodedToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
 
     if (!decodedToken) {
-      throw new ApiErrors(401, 'Invalid tokens');
+      throw new ApiErrors(401, 'User tokens not found');
     }
 
     const user = await User.findById(decodedToken._id).select('-password -refreshToken');
 
     if (!user) {
-      throw new ApiErrors(401, 'Invalid tokens for user');
+      throw new ApiErrors(401, 'Invalid tokens');
     }
 
     req.user = user;

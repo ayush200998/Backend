@@ -1,5 +1,7 @@
+/* eslint-disable max-len */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/extensions */
+import jwt from 'jsonwebtoken';
 import asyncHandler from '../utils/asyncHandler.js';
 import User from '../models/user.models.js';
 import UserHelper from '../helpers/user.helper.js';
@@ -95,7 +97,7 @@ UserController.loginUser = asyncHandler(async (req, res) => {
     password,
   } = req.body;
 
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new ApiErrors(400, 'Username OR Email is required');
   }
 
@@ -129,10 +131,7 @@ UserController.loginUser = asyncHandler(async (req, res) => {
   const loggedInUser = await User.findById(user._id).select('-password -refreshToken');
 
   // Generate cookie
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,
-  };
+  const cookieOptions = UserHelper.getCookieOptions();
 
   return res
     .status(200)
@@ -166,10 +165,7 @@ UserController.logoutUser = asyncHandler(async (req, res) => {
     },
   );
 
-  const cookieOptions = {
-    httpOnly: true,
-    secure: true,
-  };
+  const cookieOptions = UserHelper.getCookieOptions();
 
   return res
     .status(200)
@@ -182,6 +178,53 @@ UserController.logoutUser = asyncHandler(async (req, res) => {
         'User logged out successfully',
       ),
     );
+});
+
+UserController.refreshTokens = asyncHandler(async (req, res) => {
+  const userRefreshTokens = req.cookies.refreshToken || req.body.refreshToken;
+
+  if (!userRefreshTokens) {
+    throw new ApiErrors(401, 'Unauthoized access');
+  }
+
+  // Get the user data
+  try {
+    const decodedToken = jwt.verify(
+      userRefreshTokens,
+      process.env.REFRESH_TOKEN_SECRET,
+    );
+
+    const user = await User.findById(decodedToken?._id);
+
+    if (!user) {
+      throw new Error(400, 'Invalid refresh token');
+    }
+
+    if (userRefreshTokens !== user?.refreshToken) {
+      throw new ApiErrors(400, 'Refresh token is expired or used');
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = await UserHelper.generateAccessAndRefreshTokens(user._id);
+
+    const cookieOptions = UserHelper.getCookieOptions();
+
+    return res
+      .status(200)
+      .cookie('accessToken', accessToken, cookieOptions)
+      .cookie('refreshToken', newRefreshToken, cookieOptions)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken,
+            refreshToken: newRefreshToken,
+          },
+          'Token refreshed successfullt',
+        ),
+      );
+  } catch (error) {
+    throw new ApiErrors(401, error?.message || 'Invalid tokens');
+  }
 });
 
 export default UserController;

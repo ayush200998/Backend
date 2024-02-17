@@ -23,6 +23,7 @@ router.route('/register').post(
 );
 
 router.route('/login').post(UserController.loginUser);
+router.route('/refresh_token').post(UserController.refreshTokens);
 
 // Secured routes
 router.route('/logout').post(

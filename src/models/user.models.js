@@ -1,3 +1,4 @@
+/* eslint-disable no-return-await */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
