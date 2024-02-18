@@ -284,7 +284,7 @@ UserController.updateUserDetails = asyncHandler(async (req, res) => {
     fullName,
   } = req.body;
 
-  if (!(email || fullName)) {
+  if (!email || !fullName) {
     throw new ApiErrors(400, 'Missing parameters');
   }
 
@@ -325,6 +325,7 @@ UserController.getCurrentUser = asyncHandler(async (req, res) => res
 
 UserController.updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
+  const oldAvatarUrl = req.user?.coverImage;
 
   if (!avatarLocalPath) {
     throw new ApiErrors(400, 'Avatar file is missing');
@@ -337,7 +338,7 @@ UserController.updateUserAvatar = asyncHandler(async (req, res) => {
   }
 
   // Delete the previous file from cloudinary
-  await CloudinaryHelper.deleteFromCloudinary(avatar.url);
+  await CloudinaryHelper.deleteFromCloudinary(oldAvatarUrl);
 
   await User.findByIdAndUpdate(
     req.user._id,
@@ -366,6 +367,7 @@ UserController.updateUserAvatar = asyncHandler(async (req, res) => {
 
 UserController.updateUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
+  const oldCoverImageUrl = req.user?.coverImage;
 
   if (!coverImageLocalPath) {
     throw new ApiErrors(400, 'Cover image file is missing');
@@ -378,7 +380,7 @@ UserController.updateUserCoverImage = asyncHandler(async (req, res) => {
   }
 
   // Delete the previous file from cloudinary
-  await CloudinaryHelper.deleteFromCloudinary(coverImage.url);
+  await CloudinaryHelper.deleteFromCloudinary(oldCoverImageUrl);
 
   await User.findByIdAndUpdate(
     req.user._id,
@@ -444,7 +446,7 @@ UserController.getUserProfileFromUsername = asyncHandler(async (req, res) => {
         isSubscribed: {
           $cond: {
             if: {
-              $in: [req.user?._id, '$subcribers.susbscriber'],
+              $in: [req.user?._id, '$subscribers.subscriber'],
             },
             then: true,
             else: false,
@@ -471,8 +473,6 @@ UserController.getUserProfileFromUsername = asyncHandler(async (req, res) => {
     throw new ApiErrors(400, 'Channel does not exists');
   }
 
-  console.log('Results', result);
-
   return res
     .status(200)
     .json(
@@ -487,10 +487,10 @@ UserController.getUserProfileFromUsername = asyncHandler(async (req, res) => {
 });
 
 UserController.getUserWatchHistory = asyncHandler(async (req, res) => {
-  const user = User.aggregate([
+  const user = await User.aggregate([
     {
       $match: {
-        _id: new mongoose.Schema.Types.ObjectId(req.user?._id),
+        _id: new mongoose.Types.ObjectId(req.user?._id),
       },
     },
     {

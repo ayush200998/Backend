@@ -43,12 +43,12 @@ router.route('/update_cover').put(
   UserController.updateUserCoverImage,
 );
 
-router.route('/updater_details').put(
+router.route('/update_details').put(
   AuthMiddleware.verifyTokens,
   UserController.updateUserDetails,
 );
 
-router.route('/updater_password').put(
+router.route('/update_password').put(
   AuthMiddleware.verifyTokens,
   UserController.updateUserPassword,
 );
