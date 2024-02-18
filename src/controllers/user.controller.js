@@ -2,12 +2,19 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/extensions */
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+
+// Custom utils
 import asyncHandler from '../utils/asyncHandler.js';
-import User from '../models/user.models.js';
-import UserHelper from '../helpers/user.helper.js';
 import ApiErrors from '../utils/ApiErrors.js';
-import CloudinaryHelper from '../utils/cloudinary.js';
 import ApiResponse from '../utils/ApiResponse.js';
+
+// Model
+import User from '../models/user.models.js';
+
+// Helpers
+import UserHelper from '../helpers/user.helper.js';
+import CloudinaryHelper from '../utils/cloudinary.js';
 
 const UserController = {};
 
@@ -394,6 +401,141 @@ UserController.updateUserCoverImage = asyncHandler(async (req, res) => {
           updatedCoverImage: coverImage.url,
         },
         'Updated cover image successfully',
+      ),
+    );
+});
+
+UserController.getUserProfileFromUsername = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  if (!username?.trim()) {
+    throw new ApiErrors(400, 'Username is missing');
+  }
+
+  const result = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'channel',
+        as: 'subscribers',
+      },
+    },
+    {
+      $lookup: {
+        from: 'subscriptions',
+        localField: '_id',
+        foreignField: 'subscribers',
+        as: 'subscribedTo',
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: '$subscribers',
+        },
+        subscribedToCount: {
+          $size: '$subscribedTo',
+        },
+        isSubscribed: {
+          $cond: {
+            if: {
+              $in: [req.user?._id, '$subcribers.susbscriber'],
+            },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscribersCount: 1,
+        subscribedToCount: 1,
+        isSubscribed: 1,
+        email: 1,
+        avatar: 1,
+        coverImage: 1,
+        watchHistory: 1,
+      },
+    },
+  ]);
+
+  if (!result?.length) {
+    throw new ApiErrors(400, 'Channel does not exists');
+  }
+
+  console.log('Results', result);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          userProfile: result[0],
+        },
+        'Fetched user profile successfully',
+      ),
+    );
+});
+
+UserController.getUserWatchHistory = asyncHandler(async (req, res) => {
+  const user = User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Schema.Types.ObjectId(req.user?._id),
+      },
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localField: 'watchHistory',
+        foreignField: '_id',
+        as: 'watchHistory',
+        pipeline: [
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'owner',
+              foreignField: '_id',
+              as: 'owner',
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1,
+                  },
+                },
+                {
+                  $addFields: {
+                    owner: {
+                      $first: '$owner',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        'Watch history fetched',
       ),
     );
 });

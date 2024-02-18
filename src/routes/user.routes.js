@@ -37,4 +37,35 @@ router.route('/update_avatar').put(
   UserController.updateUserAvatar,
 );
 
+router.route('/update_cover').put(
+  AuthMiddleware.verifyTokens,
+  upload.single('coverImage'),
+  UserController.updateUserCoverImage,
+);
+
+router.route('/updater_details').put(
+  AuthMiddleware.verifyTokens,
+  UserController.updateUserDetails,
+);
+
+router.route('/updater_password').put(
+  AuthMiddleware.verifyTokens,
+  UserController.updateUserPassword,
+);
+
+router.route('/current_user').get(
+  AuthMiddleware.verifyTokens,
+  UserController.getCurrentUser,
+);
+
+router.route('/profile/:username').get(
+  AuthMiddleware.verifyTokens,
+  UserController.getUserProfileFromUsername,
+);
+
+router.route('/watch_history').get(
+  AuthMiddleware.verifyTokens,
+  UserController.getUserWatchHistory,
+);
+
 export default router;
