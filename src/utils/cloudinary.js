@@ -37,11 +37,38 @@ CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath) => {
   try {
     const byteArrayBuffer = fs.readFileSync(localFilePath);
     const uploadedResult = await new Promise((resolve) => {
-      cloudinary.v2.uploader.upload_stream((error, uploadResult) => resolve(uploadResult)).end(byteArrayBuffer);
+      cloudinary.uploader.upload_stream((error, uploadResult) => resolve(uploadResult)).end(byteArrayBuffer);
     });
     return uploadedResult;
   } catch (error) {
     fs.unlinkFile(localFilePath);
+    return null;
+  }
+};
+
+// Get the public id from cloudinary url
+CloudinaryHelper.getPublicIdFromUrl = (url = '') => {
+  const regex = /\/v\d+\/([^\/]+)\.\w+$/;
+  const match = url.match(regex);
+
+  if (match) {
+    const publicId = match[1];
+    return publicId;
+  }
+  return null;
+};
+
+// Delete a file from cloudinary
+CloudinaryHelper.deleteFromCloudinary = async (url) => {
+  const publicId = CloudinaryHelper.getPublicIdFromUrl(url);
+  try {
+    const response = await cloudinary.uploader.destroy(publicId);
+    return response;
+  } catch (error) {
+    console.log('Error while deleting the file from cloudinary', {
+      url,
+      error: error?.message,
+    });
     return null;
   }
 };

@@ -329,6 +329,9 @@ UserController.updateUserAvatar = asyncHandler(async (req, res) => {
     throw new Error(400, 'Error while updating user avatar');
   }
 
+  // Delete the previous file from cloudinary
+  await CloudinaryHelper.deleteFromCloudinary(avatar.url);
+
   await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -366,6 +369,9 @@ UserController.updateUserCoverImage = asyncHandler(async (req, res) => {
   if (!coverImage?.url) {
     throw new Error(400, 'Error while updating user cover image');
   }
+
+  // Delete the previous file from cloudinary
+  await CloudinaryHelper.deleteFromCloudinary(coverImage.url);
 
   await User.findByIdAndUpdate(
     req.user._id,

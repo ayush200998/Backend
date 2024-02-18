@@ -31,4 +31,10 @@ router.route('/logout').post(
   UserController.logoutUser,
 );
 
+router.route('/update_avatar').put(
+  AuthMiddleware.verifyTokens,
+  upload.single('avatar'),
+  UserController.updateUserAvatar,
+);
+
 export default router;
