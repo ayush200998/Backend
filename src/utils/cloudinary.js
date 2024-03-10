@@ -32,16 +32,30 @@ CloudinaryHelper.uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-// TODO: Add a handler for uploading a file with cloudinary streams
+// Uploading a file with cloudinary streams
 CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath) => {
+  const uploadOptions = {
+    resource_type: 'video',
+    folder: 'videos',
+  };
+
   try {
     const byteArrayBuffer = fs.readFileSync(localFilePath);
-    const uploadedResult = await new Promise((resolve) => {
-      cloudinary.uploader.upload_stream((error, uploadResult) => resolve(uploadResult)).end(byteArrayBuffer);
+    const uploadedResult = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(uploadOptions, (error, uploadResult) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(uploadResult);
+        }
+      }).end(byteArrayBuffer);
     });
+
+    fs.unlinkSync(localFilePath);
     return uploadedResult;
   } catch (error) {
-    fs.unlinkFile(localFilePath);
+    console.log('Error while uploading on cloudinary with Streams', error.message);
+    fs.unlinkSync(localFilePath);
     return null;
   }
 };
