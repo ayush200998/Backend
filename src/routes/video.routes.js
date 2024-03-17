@@ -6,6 +6,8 @@ import AuthMiddleware from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
+router.route('/').get(VideoController.getAllVideosForUser);
+
 router.route('/').post(
   AuthMiddleware.verifyTokens,
   upload.fields([
@@ -20,4 +22,16 @@ router.route('/').post(
   ]),
   VideoController.createOrPublishVideo,
 );
+
+router.route('/:videoId').put(
+  AuthMiddleware.verifyTokens,
+  upload.single('thumbnail'),
+  VideoController.updateVideo,
+);
+
+router.route('/:videoId').delete(
+  AuthMiddleware.verifyTokens,
+  VideoController.deleteVideo,
+);
+
 export default router;

@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable max-len */
 import fs from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
@@ -12,15 +13,26 @@ cloudinary.config({
 const CloudinaryHelper = {};
 
 // localFilePath: is a file path which is already uploaded in the server
-CloudinaryHelper.uploadOnCloudinary = async (localFilePath) => {
+CloudinaryHelper.uploadOnCloudinary = async (localFilePath, userDetails = null) => {
   try {
     if (!localFilePath) return null;
 
+    const userId = userDetails?._id;
+
     // Upload file to cloudinary
-    const response = await cloudinary.uploader
-      .upload(localFilePath, {
-        resource_type: 'auto',
-      });
+    let response = null;
+    if (userId) {
+      response = await cloudinary.uploader
+        .upload(localFilePath, {
+          folder: userId,
+          resource_type: 'auto',
+        });
+    } else {
+      response = await cloudinary.uploader
+        .upload(localFilePath, {
+          resource_type: 'auto',
+        });
+    }
 
     fs.unlinkSync(localFilePath);
     // Successfully uploaded
@@ -33,10 +45,14 @@ CloudinaryHelper.uploadOnCloudinary = async (localFilePath) => {
 };
 
 // Uploading a file with cloudinary streams
-CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath) => {
+CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath, userDetails = null) => {
+  if (!localFilePath) return null;
+
+  const userId = userDetails?._id;
+
   const uploadOptions = {
     resource_type: 'video',
-    folder: 'videos',
+    folder: userId ? `${userId}` : 'videos',
   };
 
   try {
@@ -62,7 +78,7 @@ CloudinaryHelper.uploadOnCloudinaryWithStreams = async (localFilePath) => {
 
 // Get the public id from cloudinary url
 CloudinaryHelper.getPublicIdFromUrl = (url = '') => {
-  const regex = /\/v\d+\/([^\/]+)\.\w+$/;
+  const regex = /\/v\d+\/([^/]+)\.\w+$/;
   const match = url.match(regex);
 
   if (match) {
@@ -73,10 +89,24 @@ CloudinaryHelper.getPublicIdFromUrl = (url = '') => {
 };
 
 // Delete a file from cloudinary
-CloudinaryHelper.deleteFromCloudinary = async (url) => {
-  const publicId = CloudinaryHelper.getPublicIdFromUrl(url);
+CloudinaryHelper.deleteFromCloudinary = async (resource) => {
+  const {
+    url,
+    // eslint-disable-next-line camelcase
+    public_id,
+    resourceType = null,
+  } = resource;
+
+  let response = null;
   try {
-    const response = await cloudinary.uploader.destroy(publicId);
+    // This means an image is being deleted
+    if (!resourceType) {
+      response = await cloudinary.uploader.destroy(public_id);
+    } else {
+      response = await cloudinary.uploader.destroy(public_id, {
+        resource_type: resourceType,
+      });
+    }
     return response;
   } catch (error) {
     console.log('Error while deleting the file from cloudinary', {

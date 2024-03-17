@@ -40,7 +40,7 @@ VideoController.getAllVideosForUser = asyncHandler(async (req, res) => {
     }
     pipeline.push({
       $match: {
-        owner: mongoose.Types.ObjectId(userId),
+        owner: new mongoose.Types.ObjectId(userId),
       },
     });
   }
@@ -64,7 +64,7 @@ VideoController.getAllVideosForUser = asyncHandler(async (req, res) => {
           {
             $project: {
               username: 1,
-              'avatar.url': 1,
+              avatar: 1,
             },
           },
         ],
@@ -100,6 +100,8 @@ VideoController.createOrPublishVideo = asyncHandler(async (req, res) => {
     duration,
   } = req.body;
 
+  const { user } = req;
+
   if (!title || !description || !duration) {
     throw new ApiErrors(400, 'Missing params');
   }
@@ -109,9 +111,9 @@ VideoController.createOrPublishVideo = asyncHandler(async (req, res) => {
 
   // Upload video to Cloudinary
 
-  const video = await CloudinaryHelper.uploadOnCloudinaryWithStreams(videoLocalPath);
+  const video = await CloudinaryHelper.uploadOnCloudinaryWithStreams(videoLocalPath, user);
 
-  const thumbnail = await CloudinaryHelper.uploadOnCloudinary(thumbnailLocalPath);
+  const thumbnail = await CloudinaryHelper.uploadOnCloudinary(thumbnailLocalPath, user);
 
   if (!video?.url || !thumbnail.url) {
     throw new ApiErrors(500, 'Error while uploading video');
@@ -122,8 +124,14 @@ VideoController.createOrPublishVideo = asyncHandler(async (req, res) => {
     title,
     description,
     duration,
-    videoFile: video.url,
-    thumbnail: thumbnail.url,
+    videoFile: {
+      url: video.url,
+      public_id: video.public_id,
+    },
+    thumbnail: {
+      url: thumbnail.url,
+      public_id: thumbnail.public_id,
+    },
     owner: req.user?._id,
   });
 
@@ -134,6 +142,123 @@ VideoController.createOrPublishVideo = asyncHandler(async (req, res) => {
       'Video created successfully',
     ),
   );
+});
+
+// Update the fields like title, description, thumbnail etc
+VideoController.updateVideo = asyncHandler(async (req, res) => {
+  const {
+    videoId,
+  } = req.params;
+
+  const {
+    title,
+    description,
+  } = req.body;
+
+  const { user } = req;
+  const thumbnailLocalPath = req.file?.path;
+
+  if (!videoId) {
+    throw new ApiErrors(400, 'Video id not found');
+  }
+
+  if (!title || !description || !thumbnailLocalPath) {
+    throw new ApiErrors(400, 'Missing params');
+  }
+
+  // Get the video
+  const video = await VideoModel.findById(videoId);
+
+  if (!video) {
+    throw new ApiErrors(400, 'No video found');
+  }
+
+  // Check if user is creator of video
+  if (video.owner.toString() !== user._id.toString()) {
+    throw new ApiErrors(401, 'User is not the creator of video');
+  }
+
+  // Upload the new thumbnail to cloudinary
+  const oldThumbnail = video.thumbnail;
+  const newThumbnail = await CloudinaryHelper.uploadOnCloudinary(thumbnailLocalPath, user);
+
+  if (!newThumbnail?.url) {
+    throw new ApiErrors(500, 'Error while uplloading on cloudinary');
+  }
+
+  // Deleted the oldThumbnail andfrom Cloudinary
+  await CloudinaryHelper.deleteFromCloudinary(oldThumbnail);
+
+  const updatedVideo = await VideoModel.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        title,
+        description,
+        thumbnail: {
+          url: newThumbnail.url,
+          public_id: newThumbnail.public_id,
+        },
+      },
+    },
+    {
+      new: true,
+    },
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedVideo,
+        'Update video successfully',
+      ),
+    );
+});
+
+VideoController.deleteVideo = asyncHandler(async (req, res) => {
+  const {
+    videoId,
+  } = req.params;
+
+  const {
+    user,
+  } = req;
+
+  if (!videoId) {
+    throw new ApiErrors(400, 'Video id not found');
+  }
+
+  const video = await VideoModel.findById(videoId);
+
+  if (!video) {
+    throw new ApiErrors(400, 'Video not found');
+  }
+
+  // Check if user is creator of video
+  if (user._id.toString() !== video.owner.toString()) {
+    throw new ApiErrors(401, 'User is not the creator of video');
+  }
+
+  const oldThumbnail = video.thumbnail;
+  const oldVideo = video.videoFile;
+  oldVideo.resourceType = 'video';
+
+  // Delete the files from Cloudinary then delete the video
+  const deletedVideo = await VideoModel.findByIdAndDelete(videoId).select('-videoFile -thumbnail');
+  await CloudinaryHelper.deleteFromCloudinary(oldVideo);
+  await CloudinaryHelper.deleteFromCloudinary(oldThumbnail);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        deletedVideo,
+        'Video deleted successfully',
+      ),
+    );
 });
 
 export default VideoController;
