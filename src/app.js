@@ -7,6 +7,7 @@ import cors from 'cors';
 // Routes
 import UserRoute from './routes/user.routes.js';
 import VideoRoute from './routes/video.routes.js';
+import PlayListRoute from './routes/playlist.routes.js';
 
 // Constants
 import { API_V1 } from './constants.js';
@@ -33,5 +34,6 @@ app.use(cookieParser());
 // Custom routes
 app.use(`${API_V1}/users`, UserRoute);
 app.use(`${API_V1}/videos`, VideoRoute);
+app.use(`${API_V1}/playlists`, PlayListRoute);
 
 export default app;
