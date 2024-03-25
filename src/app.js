@@ -8,6 +8,8 @@ import cors from 'cors';
 import UserRoute from './routes/user.routes.js';
 import VideoRoute from './routes/video.routes.js';
 import PlayListRoute from './routes/playlist.routes.js';
+import LikeRoute from './routes/like.routes.js';
+import CommentRoute from './routes/comment.routes.js';
 
 // Constants
 import { API_V1 } from './constants.js';
@@ -35,5 +37,7 @@ app.use(cookieParser());
 app.use(`${API_V1}/users`, UserRoute);
 app.use(`${API_V1}/videos`, VideoRoute);
 app.use(`${API_V1}/playlists`, PlayListRoute);
+app.use(`${API_V1}/likes`, LikeRoute);
+app.use(`${API_V1}/comments`, CommentRoute);
 
 export default app;

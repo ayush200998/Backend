@@ -1,7 +1,7 @@
 /* eslint-disable import/extensions */
 /* eslint-disable no-underscore-dangle */
 import mongoose, { isValidObjectId } from 'mongoose';
-import VideoModel from '../models/video.model.js';
+import VideoModel from '../models/video.models.js';
 import ApiErrors from '../utils/ApiErrors.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
